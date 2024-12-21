@@ -5,7 +5,7 @@ import {
     ChevronLeft,
     ChevronRight,
     Home,
-    BarChart2,
+    Plus,
     Users,
     Settings,
     HelpCircle,
@@ -100,17 +100,24 @@ const Navbar: React.FC = () => {
     const navigate = useNavigate();
     const navItems: NavItem[] = [
         { icon: Home, label: "Project Selector", link:"/projectSelector" },
-        { icon: BarChart2, label: "Analytics", link:"" },
+        { icon: Plus, label: "Create", link:"/create" },
         { icon: Users, label: "Team", link:"" },
         { icon: Settings, label: "Settings", link:"" },
         { icon: HelpCircle, label: "Help", link:"" },
     ];
-    function handleNavbar(link){
-        if(link=="/projectSelector"){
-            localStorage.removeItem("project")
-            console.log("PRoject removed")
-            navigate(link,{replace:true})
+    function handleNavbar(link:string){
+        switch(link){
+            case "/projectSelector":
+                localStorage.removeItem("project")
+                console.log("Project removed")
+                navigate(link,{replace:true})
+                break;
+            case "/create":
+                navigate(link,{replace:true})
+                break;
         }
+
+
     }
     return (
         <>

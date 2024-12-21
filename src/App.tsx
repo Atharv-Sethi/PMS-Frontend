@@ -1,7 +1,8 @@
-import Login from "./Components/Login"
-import ProjectSelector from "./Components/ProjectSelector.tsx";
+import Login from "./Pages/Login.tsx"
+import ProjectSelector from "./Pages/ProjectSelector.tsx";
 import { BrowserRouter, Routes, Route } from "react-router-dom";
-import {Dashboard} from "./Components/Dashboard.tsx";
+import {Dashboard} from "./Pages/Dashboard.tsx";
+import {Create} from "./Pages/Create.tsx";
 
 function App() {
   return (
@@ -12,6 +13,7 @@ function App() {
         <Route path="/login" element={<Login />}/>
         <Route path="/dashboard" element={<Dashboard/>}/>
         <Route path="/projectSelector" element={localStorage.getItem("token")? <ProjectSelector/> : <Login/>}/>
+        <Route path="/create" element={localStorage.getItem("token") ? localStorage.getItem("project")? <Create/> : <ProjectSelector/> : <Login/>} />
       </Routes>
     </BrowserRouter>
     </>
