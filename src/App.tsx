@@ -1,7 +1,7 @@
 import Login from "./Pages/Login.tsx"
 import ProjectSelector from "./Pages/ProjectSelector.tsx";
 import { BrowserRouter, Routes, Route } from "react-router-dom";
-import {Dashboard} from "./Pages/Dashboard.tsx";
+import Dashboard from "./Pages/DashboardV2.tsx";
 import {Create} from "./Pages/Create.tsx";
 
 function App() {
