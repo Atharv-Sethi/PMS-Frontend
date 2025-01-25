@@ -3,6 +3,7 @@ import ProjectSelector from "./Pages/ProjectSelector.tsx";
 import { BrowserRouter, Routes, Route } from "react-router-dom";
 import Dashboard from "./Pages/DashboardV2.tsx";
 import {Create} from "./Pages/Create.tsx";
+import Backlog from "./Pages/Backlog.tsx";
 
 function App() {
   return (
@@ -14,6 +15,7 @@ function App() {
         <Route path="/dashboard" element={<Dashboard/>}/>
         <Route path="/projectSelector" element={localStorage.getItem("token")? <ProjectSelector/> : <Login/>}/>
         <Route path="/create" element={localStorage.getItem("token") ? localStorage.getItem("project")? <Create/> : <ProjectSelector/> : <Login/>} />
+        <Route path="/backlog" element={localStorage.getItem("token") ? localStorage.getItem("project")? <Backlog/> : <ProjectSelector/> : <Login/>} />
       </Routes>
     </BrowserRouter>
     </>

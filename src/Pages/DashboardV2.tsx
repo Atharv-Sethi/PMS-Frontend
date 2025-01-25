@@ -28,6 +28,9 @@ export default function Dashboard() {
     function addNew(){
         navigate("/create")   
     }
+    function backlog(){
+      navigate("/backlog")
+    }
   return (
     <div className="flex h-screen flex-col">
       <header className="flex items-center justify-between px-6 py-3 bg-gray-800 text-white">
@@ -72,6 +75,7 @@ export default function Dashboard() {
                 <Button 
                   variant="ghost" 
                   className="w-full justify-start text-white hover:text-gray-800 hover:bg-gray-200"
+                  onClick={backlog}
                 >
                   <ListTodo className="mr-2 h-4 w-4" />
                   Backlog
