@@ -1,4 +1,4 @@
-//TODO: Right now only the sprints are fetched and rendered but no stories are bring fetched the table is just static and is not getting populated.
+//TODO: Right now only the sprints are fetched and rendered but no stories are bring fetched the table is just static and is not getting populated. b
 import { useEffect, useState } from "react";
 import axios from "axios";
 import { useNavigate } from "react-router-dom";
