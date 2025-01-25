@@ -17,11 +17,7 @@ export default function Dashboard() {
         else {
             if (!localStorage.getItem("project")) {
                 navigate("/projectSelector", {replace: true});
-            } else {
-
-                const project:object = JSON.parse(localStorage.getItem("project"));
-
-            }
+            } 
         }
 
     }, []);
@@ -30,6 +26,9 @@ export default function Dashboard() {
     }
     function backlog(){
       navigate("/backlog")
+    }
+    function sprint(){
+      navigate("/sprint")
     }
   return (
     <div className="flex h-screen flex-col">
@@ -68,6 +67,7 @@ export default function Dashboard() {
                 <Button 
                   variant="ghost" 
                   className="w-full justify-start text-white hover:text-gray-800 hover:bg-gray-200"
+                  onClick={sprint}
                 >
                   <Sprint className="mr-2 h-4 w-4" />
                   Sprint
