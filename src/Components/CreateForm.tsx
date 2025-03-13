@@ -18,11 +18,13 @@ export default function CreateForm() {
     const [parentEpic, setParentEpic] = useState('');
     const [parentStory, setParentStory] = useState('');
     const [assignedTo, setAssignedTo] = useState('');
+    const [sprintId, setSprintId] = useState('');
 
     const [themes, setThemes] = useState<Item[]>([]);
     const [initiatives, setInitiatives] = useState<Item[]>([]);
     const [epics, setEpics] = useState<Item[]>([]);
     const [stories, setStories] = useState<Item[]>([]);
+    const [sprints, setSprints] = useState<Item[]>([]);
 
     const [isLoading, setIsLoading] = useState(false);
     const [error, setError] = useState('');
@@ -32,8 +34,6 @@ export default function CreateForm() {
     const projectId = project.id;
 
     useEffect(() => {
-        console.log(project)
-        console.log(projectId)
         if (projectId) {
             fetchThemes();
         }
@@ -63,11 +63,17 @@ export default function CreateForm() {
         }
     }, [parentEpic]);
 
+    useEffect(() => {
+        if (type === 'story') {
+            fetchSprints();
+        }
+    }, [type]);
+
     const fetchThemes = async () => {
         setIsLoading(true);
         try {
-            const response = await axios.get(`http://localhost:8000/api/projects/${projectId}/themes`,{
-                headers:{
+            const response = await axios.get(`http://localhost:8000/api/projects/${projectId}/themes`, {
+                headers: {
                     Authorization: `Bearer ${token}`,
                 }
             });
@@ -123,6 +129,21 @@ export default function CreateForm() {
         setIsLoading(false);
     };
 
+    const fetchSprints = async () => {
+        setIsLoading(true);
+        try {
+            const response = await axios.get(`http://localhost:8000/api/projects/${projectId}/sprints`, {
+                headers: {
+                    Authorization: `Bearer ${token}`,
+                }
+            });
+            setSprints(response.data);
+        } catch (err) {
+            setError(`Failed to fetch sprints, ${err}`);
+        }
+        setIsLoading(false);
+    };
+
     const handleSubmit = async (e: React.FormEvent) => {
         e.preventDefault();
         setIsLoading(true);
@@ -136,7 +157,6 @@ export default function CreateForm() {
                     Authorization: `Bearer ${token}`
                 }
             };
-
             switch (type) {
                 case 'theme':
                     url += 'themes';
@@ -151,6 +171,9 @@ export default function CreateForm() {
                 case 'story':
                     url += `themes/${parentTheme}/initiatives/${parentInitiative}/epics/${parentEpic}/stories`;
                     data.type = type;
+                    if (type === 'story') {
+                        data.sprint_id = sprintId; // Add sprint_id for stories
+                    }
                     break;
                 case 'task':
                     url += `themes/${parentTheme}/initiatives/${parentInitiative}/epics/${parentEpic}/stories/${parentStory}/tasks`;
@@ -178,8 +201,9 @@ export default function CreateForm() {
             setParentEpic('');
             setParentStory('');
             setAssignedTo('');
+            setSprintId(''); // Reset sprint id
         } catch (err) {
-            setError('Failed to submit form');
+            setError(`Failes to submit, ${err}`);
         }
 
         setIsLoading(false);
@@ -306,6 +330,24 @@ export default function CreateForm() {
                 </div>
             )}
 
+            {type === 'story' && (
+                <div>
+                    <label htmlFor="sprintId" className="block text-sm font-medium text-gray-700">Sprint</label>
+                    <select
+                        id="sprintId"
+                        value={sprintId}
+                        onChange={(e) => setSprintId(e.target.value)}
+                        required
+                        className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-indigo-300 focus:ring focus:ring-indigo-200 focus:ring-opacity-50"
+                    >
+                        <option value="">Select Sprint</option>
+                        {sprints.map((sprint) => (
+                            <option key={sprint.id} value={sprint.id}>{sprint.name}</option>
+                        ))}
+                    </select>
+                </div>
+            )}
+
             {type && type !== 'initiative' && (
                 <div>
                     <label htmlFor="deadline" className="block text-sm font-medium text-gray-700">Deadline</label>
@@ -343,4 +385,3 @@ export default function CreateForm() {
         </form>
     );
 }
-
