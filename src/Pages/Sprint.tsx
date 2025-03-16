@@ -17,9 +17,12 @@ type Sprint = {
 // Define the type for a Story
 type Story = {
   id: number;
-  name: string; // Story has a `name` instead of `title`
-  phase: string; // Story has a `phase` like "Ready", "In Progress", etc.
+  name: string;
+  phase: string;
   sprint_id: number;
+  epic_id: number; // Add epic_id to the Story type
+  initiative_id: number; // Add initiative_id to the Story type
+  theme_id: number; // Add theme_id to the Story type
 };
 
 // Inline styles for the table
@@ -47,23 +50,20 @@ const cardStyle = {
 
 function Sprint() {
   const navigate = useNavigate();
-  const [sprints, setSprints] = useState<Sprint[]>([]); // State to store sprints
-  const [stories, setStories] = useState<{ [key: number]: Story[] }>({}); // State to store stories for each sprint
+  const [sprints, setSprints] = useState<Sprint[]>([]);
+  const [stories, setStories] = useState<{ [key: number]: Story[] }>({});
 
   useEffect(() => {
-    // Redirect to login if no token is found
     if (!localStorage.getItem("token")) {
       navigate("/login");
       return;
     }
 
-    // Redirect to project selector if no project is selected
     if (!localStorage.getItem("project")) {
       navigate("/projectSelector", { replace: true });
       return;
     }
 
-    // Fetch sprints for the selected project
     const projectId = JSON.parse(localStorage.getItem("project")!).id;
     axios
       .get(`http://localhost:8000/api/projects/${projectId}/sprints/`, {
@@ -72,47 +72,22 @@ function Sprint() {
         },
       })
       .then((response) => {
-        console.log(response.data);
-        setSprints(response.data); // Store the fetched sprints in state
-        response.data.forEach((sprint: Sprint) => fetchStories(sprint.id)); // Fetch stories for each sprint
+        console.log("Fetched sprints:", response.data);
+        setSprints(response.data);
+        response.data.forEach((sprint: Sprint) => fetchStories(sprint.id));
       })
       .catch((error) => {
         console.error("Error fetching sprints:", error);
       });
   }, [navigate]);
 
-  // Filter out sprints with status "Not Started"
-  const filteredSprints = sprints.filter(
-    (sprint) => sprint.status !== "Not Started"
-  );
-
-  function newSprint() {
-    document.getElementById("popupDialog").style.display = "block";
-    document.getElementById("popupDialog").style.backgroundColor = "#fff";
-    document.querySelector("body").style.backgroundColor = "rgba(0,0,0,0.4)";
-  }
-
-  const popupDialog = {
-    display: "none",
-    position: "fixed",  
-    top: "50%",
-    left: "50%",
-    transform: " translate(-50%, -50%)",
-    padding: " 20px", 
-    " backgroundColor": "#fff",
-    border: "1px solid #ccc",
-    " boxShadow": "0 4px 8px rgba(0, 0, 0, 0.1)",
-    "  zIndex": "1000",
-    width:"50vw"
-  };
-
+  // Fetch stories for a specific sprint
   function fetchStories(sprintId: number) {
     if (!localStorage.getItem("project")) {
       navigate("/projectSelector", { replace: true });
       return;
     }
 
-    // Fetch stories for the selected sprint
     const projectId = JSON.parse(localStorage.getItem("project")!).id;
     axios
       .get(`http://localhost:8000/api/projects/${projectId}/sprints/${sprintId}/stories`, {
@@ -121,7 +96,7 @@ function Sprint() {
         },
       })
       .then((response) => {
-        console.log(response.data);
+        console.log("Fetched stories for sprint", sprintId, ":", response.data);
         setStories((prevStories) => ({
           ...prevStories,
           [sprintId]: response.data,
@@ -132,82 +107,134 @@ function Sprint() {
       });
   }
 
-  function closeFn() {
-    document.getElementById("popupDialog").style.display = "none";
-    document.querySelector("body").style.backgroundColor = "#fff";
-  }
-
-  // Helper function to filter stories by phase
-  const filterStoriesByPhase = (stories: Story[], phase: string) => {
-    return stories.filter((story) => story.phase === phase);
+  // Handle drag start
+  const handleDragStart = (e: React.DragEvent, storyId: number) => {
+    e.dataTransfer.setData("storyId", storyId.toString());
   };
+
+  // Handle drag over
+  const handleDragOver = (e: React.DragEvent) => {
+    e.preventDefault(); // Allow drop
+  };
+
+  // Handle drop
+  const handleDrop = async (e: React.DragEvent, sprintId: number, newPhase: string) => {
+    e.preventDefault();
+    const storyId = parseInt(e.dataTransfer.getData("storyId"));
+
+    // Find the story being dragged
+    const story = stories[sprintId].find((s) => s.id === storyId);
+    if (!story) return;
+
+    // Extract theme_id, initiative_id, and epic_id from the story
+    const { theme_id, initiative_id, epic_id } = story;
+
+    // Update the story phase using the correct nested route
+    try {
+      const projectId = JSON.parse(localStorage.getItem("project")!).id;
+      await axios.put(
+        `http://localhost:8000/api/projects/${projectId}/themes/${theme_id}/initiatives/${initiative_id}/epics/${epic_id}/stories/${storyId}`,
+        { phase: newPhase },
+        {
+          headers: {
+            Authorization: `Bearer ${localStorage.getItem("token")}`,
+          },
+        }
+      );
+
+      // Update the local state
+      setStories((prevStories) => ({
+        ...prevStories,
+        [sprintId]: prevStories[sprintId].map((s) =>
+          s.id === storyId ? { ...s, phase: newPhase } : s
+        ),
+      }));
+    } catch (error) {
+      console.error("Error updating story phase:", error);
+    }
+  };
+
+  // Filter out sprints with status "Not Started"
+  const filteredSprints = sprints.filter(
+    (sprint) => sprint.status !== "Not Started"
+  );
 
   return (
     <>
-      <button onClick={newSprint}>Make new sprint</button>
-      <div id="popupDialog" style={popupDialog}>
-        <p>Make new sprint</p>
-        <label htmlFor="name">Name:</label>
-        <input type="text" name="name" id="name"  className="bg-gray-50 border border-gray-300 text-gray-900 text-sm rounded-lg focus:ring-blue-500 focus:border-blue-500 block w-96 p-2.5 dark:bg-gray-700 dark:border-gray-600 dark:placeholder-gray-400 dark:text-white dark:focus:ring-blue-500 dark:focus:border-blue-500" />
+      <h1>Sprints</h1>
+      {filteredSprints.length > 0 ? (
+        filteredSprints.map((sprint) => (
+          <div key={sprint.id} className="card" style={cardStyle}>
+            <h3>{sprint.name}</h3>
+            <p>
+              <strong>Start Date:</strong> {sprint.start_date}
+            </p>
+            <p>
+              <strong>End Date:</strong> {sprint.end_date}
+            </p>
+            <p>
+              <strong>Status:</strong> {sprint.status}
+            </p>
 
-        <label htmlFor="startDate">Start Date:</label>
-        <input type="date" name="startDate" id="startDate"  className="bg-gray-50 border border-gray-300 text-gray-900 text-sm rounded-lg focus:ring-blue-500 focus:border-blue-500 block w-96 p-2.5 dark:bg-gray-700 dark:border-gray-600 dark:placeholder-gray-400 dark:text-white dark:focus:ring-blue-500 dark:focus:border-blue-500" />
-
-        <label htmlFor="startDate">End Date:</label>
-        <input type="date" name="endDate" id="endDate"  className="bg-gray-50 border border-gray-300 text-gray-900 text-sm rounded-lg focus:ring-blue-500 focus:border-blue-500 block w-96 p-2.5 dark:bg-gray-700 dark:border-gray-600 dark:placeholder-gray-400 dark:text-white dark:focus:ring-blue-500 dark:focus:border-blue-500" />
-        <button onClick={closeFn}>Close</button>
-      </div>
-      <div>
-        <h1>Sprints</h1>
-        {filteredSprints.length > 0 ? (
-          filteredSprints.map((sprint) => (
-            <div key={sprint.id} className="card" style={cardStyle}>
-              <h3>{sprint.name}</h3>
-              <p>
-                <strong>Start Date:</strong> {sprint.start_date}
-              </p>
-              <p>
-                <strong>End Date:</strong> {sprint.end_date}
-              </p>
-              <p>
-                <strong>Status:</strong> {sprint.status}
-              </p>
-
-              {/* Dynamic Table */}
-              <table
-                style={{
-                  width: "100%",
-                  borderCollapse: "collapse",
-                  marginTop: "16px",
-                }}
-              >
-                <thead>
-                  <tr>
-                    <th style={tableHeaderStyle}>Ready</th>
-                    <th style={tableHeaderStyle}>In Progress</th>
-                    <th style={tableHeaderStyle}>In QA Testing</th>
-                    <th style={tableHeaderStyle}>PO Review</th>
-                    <th style={tableHeaderStyle}>Complete/Done</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  <tr>
-                    {["Ready", "In Progress", "In QA Testing", "PO Review", "Complete/Done"].map((phase) => (
-                      <td key={phase} style={tableCellStyle}>
-                        {stories[sprint.id]?.filter((story) => story.phase === phase).map((story) => (
-                          <div key={story.id}>{story.name}</div> 
-                        ))}
-                      </td>
-                    ))}
-                  </tr>
-                </tbody>
-              </table>
-            </div>
-          ))
-        ) : (
-          <p>No sprints available.</p>
-        )}
-      </div>
+            {/* Dynamic Table */}
+            <table
+              style={{
+                width: "100%",
+                borderCollapse: "collapse",
+                marginTop: "16px",
+              }}
+            >
+              <thead>
+                <tr>
+                  {["Todo", "Ready", "In Progress", "In QA Testing", "PO Review", "Complete/Done"].map((phase) => (
+                    <th key={phase} style={tableHeaderStyle}>
+                      {phase}
+                    </th>
+                  ))}
+                </tr>
+              </thead>
+              <tbody>
+                <tr>
+                  {["Todo", "Ready", "In Progress", "In QA Testing", "PO Review", "Complete/Done"].map((phase) => (
+                    <td
+                      key={phase}
+                      style={tableCellStyle}
+                      onDragOver={handleDragOver}
+                      onDrop={(e) => handleDrop(e, sprint.id, phase)}
+                    >
+                      {stories[sprint.id] ? (
+                        stories[sprint.id]
+                          .filter((story) => story.phase === phase)
+                          .map((story) => (
+                            <div
+                              key={story.id}
+                              draggable
+                              onDragStart={(e) => handleDragStart(e, story.id)}
+                              style={{
+                                padding: "8px",
+                                margin: "4px 0",
+                                backgroundColor: "#f9f9f9",
+                                border: "1px solid #ddd",
+                                borderRadius: "4px",
+                                cursor: "move",
+                              }}
+                            >
+                              {story.name}
+                            </div>
+                          ))
+                      ) : (
+                        <div>No stories found for this phase.</div>
+                      )}
+                    </td>
+                  ))}
+                </tr>
+              </tbody>
+            </table>
+          </div>
+        ))
+      ) : (
+        <p>No sprints available.</p>
+      )}
     </>
   );
 }
