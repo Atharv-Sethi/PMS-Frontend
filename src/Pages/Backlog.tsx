@@ -1,8 +1,8 @@
-import BacklogDisplay from '@/Components/BacklogDisplay'
+import BacklogV2 from '@/Components/BacklogV2'
 
 function Backlog() {
   return (
-    <BacklogDisplay/>
+    <BacklogV2/>
   )
 }
 
