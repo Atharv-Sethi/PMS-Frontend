@@ -61,8 +61,9 @@ const Backlog = () => {
     }
 
     try {
+      const projectId = JSON.parse(localStorage.getItem("project")).id
       const response = await axios.post(
-        "http://localhost:8000/api/sprints",
+        `http://localhost:8000/api/projects/${projectId}/sprints`,
         newSprint,
         { headers: { Authorization: `Bearer ${localStorage.getItem("token")}` } }
       );

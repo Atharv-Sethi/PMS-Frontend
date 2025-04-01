@@ -1,86 +1,172 @@
-import type React from "react"
-import { useState, useEffect } from "react"
-import { useNavigate } from "react-router-dom"
-import axios from "axios"
-import Card from "./Card"
+import React, { useState, useEffect } from "react";
+import { DragDropContext, Droppable, Draggable } from "react-beautiful-dnd";
+import axios from "axios";
+import { useNavigate } from "react-router-dom";
 
-interface BacklogItem {
-  id: number
-  name: string
-  type: string
+interface Story {
+  id: number;
+  name: string;
+  phase: string;
+  sprint_id: number;
 }
 
-const BacklogDisplay: React.FC = () => {
-  const [backlogItems, setBacklogItems] = useState<BacklogItem[]>([])
-  const [isLoading, setIsLoading] = useState(true)
-  const [error, setError] = useState<string | null>(null)
-  const navigate = useNavigate()
+interface Sprint {
+  id: number;
+  name: string;
+  status: string;
+  start_date: string;
+  end_date: string;
+}
 
+interface BacklogData {
+  stories: Story[];
+  sprints: Sprint[];
+}
+
+const Backlog: React.FC = () => {
+  const [backlog, setBacklog] = useState<BacklogData | null>(null);
+  const [expandedSprints, setExpandedSprints] = useState<Record<number, boolean>>({});
+  const [isLoading, setIsLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
+  const navigate = useNavigate();
+  const token = localStorage.getItem("token");
+
+  const project = localStorage.getItem("project");
+  const projectId = JSON.parse(project).id;
   useEffect(() => {
-    if (!localStorage.getItem("token")) {
-      navigate("/login")
-    } else {
-      if (!localStorage.getItem("project")) {
-        navigate("/projectSelector", { replace: true })
-      } else {
-        const projectId = JSON.parse(localStorage.getItem("project")).id
-        axios
-          .get(`http://localhost:8000/api/projects/${projectId}/backlog`, {
-            headers: {
-              Authorization: `Bearer ${localStorage.getItem("token")}`,
-            },
-          })
-          .then((response) => {
-            console.log(response)
-            const flattenedData = flattenBacklogData(response.data)
-            setBacklogItems(flattenedData)
-            setIsLoading(false)
-          })
-          .catch((error) => {
-            console.log(error)
-            setError("Failed to fetch backlog data")
-            setIsLoading(false)
-          })
-      }
+    if (!token) {
+      navigate("/login");
+      return;
     }
-  }, [navigate])
-
-  const flattenBacklogData = (data: any): BacklogItem[] => {
-    const flattened: BacklogItem[] = []
-
-    const flatten = (item: any, type: string) => {
-      if (item && typeof item === "object") {
-        if ("id" in item && "name" in item) {
-          flattened.push({ id: item.id, name: item.name, type })
-        }
-        for (const key in item) {
-          if (Array.isArray(item[key])) {
-            item[key].forEach((subItem: any) => flatten(subItem, key.slice(0, -1)))
-          } else if (typeof item[key] === "object") {
-            flatten(item[key], key)
-          }
-        }
-      }
+  
+    const project = localStorage.getItem("project");
+    if (!project) {
+      navigate("/projectSelector", { replace: true });
+      return;
     }
+    const projectId = JSON.parse(project).id;
 
-    flatten(data, "root")
-    return flattened
-  }
 
-  if (isLoading) return <div className="text-center p-4">Loading...</div>
-  if (error) return <div className="text-center p-4 text-red-500">Error: {error}</div>
+    axios
+      .get(`http://localhost:8000/api/projects/${projectId}/backlog`, {
+        headers: { Authorization: `Bearer ${token}` },
+      })
+      .then((response) => {
+        setBacklog(response.data);
+        setIsLoading(false);
+      })
+      .catch((error) => {
+        console.error(error);
+        setError("Failed to fetch backlog data");
+        setIsLoading(false);
+      });
+  }, [navigate]);
+
+  const toggleSprint = (id: number) => {
+    setExpandedSprints((prev) => ({ ...prev, [id]: !prev[id] }));
+  };
+
+  const onDragEnd = async (result: any) => {
+    if (!result.destination) return;
+
+    const token = localStorage.getItem("token");
+    if (!token) return;
+
+    const { draggableId, destination } = result;
+    const storyId = parseInt(draggableId);
+    const newSprintId = parseInt(destination.droppableId);
+
+    if (!backlog) return;
+
+    const updatedStories = backlog.stories.map((story) =>
+      story.id === storyId ? { ...story, sprint_id: newSprintId } : story
+    );
+
+    setBacklog({ ...backlog, stories: updatedStories });
+
+    try {
+      await axios.put(
+        `http://localhost:8000/api/projects/${projectId}/stories/${storyId}/move`,
+        { sprint_id: newSprintId },
+        { headers: { Authorization: `Bearer ${token}` } }
+      );
+    } catch (error) {
+      console.error("Error moving story:", error);
+    }
+  };
+
+  if (isLoading) return <p>Loading...</p>;
+  if (error) return <p className="text-red-500">{error}</p>;
+
+  const unassignedStories = backlog?.stories.filter((story) => story.sprint_id === 0) || [];
 
   return (
-    <div className="p-4">
-      <h1 className="text-2xl font-bold mb-4">Project Backlog</h1>
-      <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4">
-        {backlogItems.map((item) => (
-          <Card key={`${item.type}-${item.id}`} title={item.type} name={item.name} />
-        ))}
+    <DragDropContext onDragEnd={onDragEnd}>
+      <div className="p-4">
+        <h2 className="text-lg font-bold">Backlog</h2>
+
+        {/* Unassigned Stories */}
+        <Droppable droppableId="0">
+          {(provided) => (
+            <div ref={provided.innerRef} {...provided.droppableProps} className="p-2 border rounded">
+              <h3 className="font-bold">Unassigned Stories</h3>
+              {unassignedStories.map((story, index) => (
+                <Draggable key={story.id} draggableId={story.id.toString()} index={index}>
+                  {(provided) => (
+                    <div
+                      ref={provided.innerRef}
+                      {...provided.draggableProps}
+                      {...provided.dragHandleProps}
+                      className="p-2 m-2 bg-gray-100 border rounded"
+                    >
+                      {story.name} - {story.phase}
+                    </div>
+                  )}
+                </Draggable>
+              ))}
+              {provided.placeholder}
+            </div>
+          )}
+        </Droppable>
+
+        {/* Sprints */}
+        {backlog?.sprints.map((sprint) => {
+          const sprintStories = backlog.stories.filter((story) => story.sprint_id === sprint.id);
+
+          return (
+            <div key={sprint.id} className="mt-4 p-2 border rounded">
+              <button onClick={() => toggleSprint(sprint.id)} className="font-bold w-full text-left">
+                {sprint.name} ({sprint.status})
+              </button>
+              {expandedSprints[sprint.id] && (
+                <Droppable droppableId={sprint.id.toString()}>
+                  {(provided) => (
+                    <div ref={provided.innerRef} {...provided.droppableProps} className="mt-2">
+                      {sprintStories.map((story, index) => (
+                        <Draggable key={story.id} draggableId={story.id.toString()} index={index}>
+                          {(provided) => (
+                            <div
+                              ref={provided.innerRef}
+                              {...provided.draggableProps}
+                              {...provided.dragHandleProps}
+                              className="p-2 m-2 bg-gray-100 border rounded"
+                            >
+                              {story.name} - {story.phase}
+                            </div>
+                          )}
+                        </Draggable>
+                      ))}
+                      {provided.placeholder}
+                    </div>
+                  )}
+                </Droppable>
+              )}
+            </div>
+          );
+        })}
       </div>
-    </div>
-  )
-}
+    </DragDropContext>
+  );
+};
 
-export default BacklogDisplay
-
+export default Backlog;
