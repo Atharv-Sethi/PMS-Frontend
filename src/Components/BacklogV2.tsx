@@ -8,8 +8,9 @@ const Backlog = () => {
   const [newSprint, setNewSprint] = useState({ name: "", start_date: "", end_date: "" });
 
   useEffect(() => {
+    const projectId = JSON.parse(localStorage.getItem("project")).id
     axios
-      .get("http://localhost:8000/api/projects/1/backlog", {
+      .get(`http://localhost:8000/api/projects/${projectId}/backlog`, {
         headers: { Authorization: `Bearer ${localStorage.getItem("token")}` },
       })
       .then((response) => {

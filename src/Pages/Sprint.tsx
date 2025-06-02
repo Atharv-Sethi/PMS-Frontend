@@ -186,7 +186,7 @@ function Sprint() {
             >
               <thead>
                 <tr>
-                  {["Todo", "Ready", "In Progress", "In QA Testing", "PO Review", "Complete/Done"].map((phase) => (
+                  {["Todo", "Ready", "In Progress", "In QA Testing", "PO Review", "Complete"].map((phase) => (
                     <th key={phase} style={tableHeaderStyle}>
                       {phase}
                     </th>
@@ -195,7 +195,7 @@ function Sprint() {
               </thead>
               <tbody>
                 <tr>
-                  {["Todo", "Ready", "In Progress", "In QA Testing", "PO Review", "Complete/Done"].map((phase) => (
+                  {["Todo", "Ready", "In progress", "In QA Testing", "PO Review", "Complete"].map((phase) => (
                     <td
                       key={phase}
                       style={tableCellStyle}

@@ -1,5 +1,5 @@
 'use client'
-
+import { useState } from 'react';
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { ScrollArea } from "@/components/ui/scroll-area"
@@ -8,7 +8,7 @@ import { useEffect } from 'react'
 import { useNavigate } from 'react-router-dom'
 
 export default function Dashboard() {
-    
+  const [iframe, setIframe] = useState('');
     const navigate = useNavigate();
     useEffect(() => {
         if(!localStorage.getItem("token")){
@@ -25,10 +25,10 @@ export default function Dashboard() {
         navigate("/create")   
     }
     function backlog(){
-      navigate("/backlog")
+      setIframe("/backlog")
     }
     function sprint(){
-      navigate("/sprint")
+      setIframe("/sprint")
     }
   return (
     <div className="flex h-screen flex-col">
@@ -61,7 +61,7 @@ export default function Dashboard() {
       </header>
       <div className="flex flex-1">
         <aside className="w-64 bg-gray-800 text-white">
-          <ScrollArea className="h-full">
+          <ScrollArea className="h-full inline">
             <div className="py-4">
               <nav className="space-y-2 px-2">
                 <Button 
@@ -72,6 +72,7 @@ export default function Dashboard() {
                   <Sprint className="mr-2 h-4 w-4" />
                   Sprint
                 </Button>
+        
                 <Button 
                   variant="ghost" 
                   className="w-full justify-start text-white hover:text-gray-800 hover:bg-gray-200"
@@ -91,7 +92,9 @@ export default function Dashboard() {
             </div>
           </ScrollArea>
         </aside>
-        
+        <div className='w-full h-full'>
+          <iframe src={iframe} className='w-full h-full' ></iframe>
+        </div>
       </div>
     </div>
   )
