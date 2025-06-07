@@ -1,20 +1,21 @@
 import React, { useState, useEffect } from "react";
 import axios from "axios";
+import { useNavigate } from "react-router-dom";
 
 const Backlog = () => {
   const [backlog, setBacklog] = useState<{ stories: any[]; sprints: any[] } | null>(null);
   const [draggedStory, setDraggedStory] = useState<number | null>(null);
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [newSprint, setNewSprint] = useState({ name: "", start_date: "", end_date: "" });
+  const navigate = useNavigate();
 
   useEffect(() => {
-    const projectId = JSON.parse(localStorage.getItem("project")).id
+    const projectId = JSON.parse(localStorage.getItem("project")).id;
     axios
       .get(`http://localhost:8000/api/projects/${projectId}/backlog`, {
         headers: { Authorization: `Bearer ${localStorage.getItem("token")}` },
       })
       .then((response) => {
-        console.log("✅ Backlog Data:", response.data);
         setBacklog(response.data);
       })
       .catch((error) => {
@@ -23,7 +24,6 @@ const Backlog = () => {
   }, []);
 
   const handleDragStart = (storyId: number) => {
-    console.log(`🚀 Drag Start: Story ID ${storyId}`);
     setDraggedStory(storyId);
   };
 
@@ -33,8 +33,6 @@ const Backlog = () => {
 
   const handleDrop = async (sprintId: number) => {
     if (draggedStory === null || backlog === null) return;
-
-    console.log(`✅ Dropped Story ${draggedStory} into Sprint ${sprintId}`);
 
     const updatedStories = backlog.stories.map((story) =>
       story.id === draggedStory ? { ...story, sprint_id: sprintId } : story
@@ -47,12 +45,16 @@ const Backlog = () => {
         { sprint_id: sprintId },
         { headers: { Authorization: `Bearer ${localStorage.getItem("token")}` } }
       );
-      console.log("✅ Story moved successfully!");
     } catch (error) {
       console.error("❌ Error moving story:", error);
     }
 
     setDraggedStory(null);
+  };
+
+  const handleViewDetails = (story: any) => {
+    sessionStorage.setItem("story", JSON.stringify(story));
+    window.open(`/story/${story.id}`, "_blank");
   };
 
   const handleAddSprint = async () => {
@@ -62,14 +64,13 @@ const Backlog = () => {
     }
 
     try {
-      const projectId = JSON.parse(localStorage.getItem("project")).id
+      const projectId = JSON.parse(localStorage.getItem("project")).id;
       const response = await axios.post(
         `http://localhost:8000/api/projects/${projectId}/sprints`,
         newSprint,
         { headers: { Authorization: `Bearer ${localStorage.getItem("token")}` } }
       );
 
-      console.log("✅ Sprint Created:", response.data);
       setBacklog((prev) => (prev ? { ...prev, sprints: [...prev.sprints, response.data] } : prev));
       setIsModalOpen(false);
       setNewSprint({ name: "", start_date: "", end_date: "" });
@@ -79,6 +80,27 @@ const Backlog = () => {
   };
 
   if (!backlog) return <p>Loading...</p>;
+
+  const StoryCard = ({ story }: { story: any }) => (
+    <div
+      key={story.id}
+      draggable
+      onDragStart={() => handleDragStart(story.id)}
+      className="p-2 m-2 bg-white border rounded shadow cursor-pointer flex justify-between items-start"
+    >
+      <div>
+        <div className="font-medium">{story.name}</div>
+        <div className="text-sm text-gray-500">{story.phase}</div>
+      </div>
+      <button
+        onClick={() => handleViewDetails(story)}
+        className="text-gray-500 hover:text-black px-2"
+        title="View Story Details"
+      >
+        ⋮
+      </button>
+    </div>
+  );
 
   return (
     <div className="grid grid-cols-2 gap-4">
@@ -92,27 +114,20 @@ const Backlog = () => {
         </button>
       </div>
 
+      {/* Unassigned Stories */}
       <div
         className="p-2 border rounded bg-gray-50 min-h-[100px]"
         onDragOver={handleDragOver}
         onDrop={() => handleDrop(0)}
       >
         <h3 className="font-bold">Unassigned Stories</h3>
-        {backlog.stories
-          .filter((story) => story.sprint_id === 0)
-          .map((story) => (
-            <div
-              key={story.id}
-              draggable
-              onDragStart={() => handleDragStart(story.id)}
-              className="p-2 m-2 bg-white border rounded shadow cursor-pointer"
-            >
-              {story.name} - {story.phase}
-            </div>
-          ))}
+        {backlog.stories.filter((story) => story.sprint_id === 0).map((story) => (
+          <StoryCard key={story.id} story={story} />
+        ))}
       </div>
 
-      <div>
+      {/* Sprints */}
+      <div className="col-span-2 grid grid-cols-2 gap-4">
         {backlog.sprints.map((sprint) => (
           <div
             key={sprint.id}
@@ -124,14 +139,7 @@ const Backlog = () => {
             {backlog.stories
               .filter((story) => story.sprint_id === sprint.id)
               .map((story) => (
-                <div
-                  key={story.id}
-                  draggable
-                  onDragStart={() => handleDragStart(story.id)}
-                  className="p-2 m-2 bg-white border rounded shadow cursor-pointer"
-                >
-                  {story.name} - {story.phase}
-                </div>
+                <StoryCard key={story.id} story={story} />
               ))}
           </div>
         ))}
@@ -139,8 +147,8 @@ const Backlog = () => {
 
       {/* Modal */}
       {isModalOpen && (
-        <div className="fixed inset-0 flex items-center justify-center bg-black bg-opacity-50">
-          <div className="bg-white p-4 rounded shadow-lg">
+        <div className="fixed inset-0 flex items-center justify-center bg-black bg-opacity-50 z-50">
+          <div className="bg-white p-4 rounded shadow-lg w-96">
             <h2 className="text-lg font-bold">Create New Sprint</h2>
             <input
               type="text"

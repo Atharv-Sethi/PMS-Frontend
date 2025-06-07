@@ -22,7 +22,7 @@ export default function Dashboard() {
 
     }, []);
     function addNew(){
-        navigate("/create")   
+        setIframe("/create")   
     }
     function backlog(){
       setIframe("/backlog")
